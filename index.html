@@ -1,0 +1,227 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Canvas Lock</title>
+		<style type="text/css">
+			.main {
+				width: 300px;
+				height: 300px;
+				margin: 20px auto 0;
+				position: relative;
+			}
+
+			#wrap {
+				position: absolute;
+				top: 0;
+				left: 0;
+				z-index: 10;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div class="main">
+			<canvas id="canvas"></canvas>
+			<canvas id="wrap"></canvas>
+		</div>
+
+		<script type="text/javascript">
+			var canvas, ctx, wcanvas, wctx;
+
+			// #43A047  #4CAF50
+			var api = {
+				_data: [],
+
+				_select: [],
+
+				_isMove: false,
+
+				init: function() {
+					ctx.clearRect(0,0,300,300);
+
+					var initX = 65, initY = 65;
+
+					this._select = [];
+					this._data = [];
+
+					for(var i = 0; i < 3; i++) {
+						for(var j = 0; j < 3; j++) {
+							this.drawCircle(65 + j * 84, 65 + i * 85, 20, '#4CAF50', false, 1);
+							this._data.push({x: 65 + j * 84, y: 65 + i * 85, r: 20});
+						}
+					}
+
+				},
+				drawCircle: function(x, y, r, color, isFilled, lineWidth) {
+					ctx.save();
+					ctx.beginPath();
+					ctx.arc(x, y, r, 0, Math.PI * 2, true);
+					
+					if(isFilled) {
+						ctx.fillStyle = color;
+						ctx.fill();
+					} else {
+						ctx.strokeStyle = color;
+						ctx.lineWidth = lineWidth;
+						ctx.stroke();
+					}
+					ctx.restore();
+				},
+
+				drawLine: function(sx, sy, ex, ey, color, lineWidth) {
+					ctx.save();
+					ctx.beginPath();
+
+					ctx.strokeStyle = color;
+					ctx.lineWidth = lineWidth;
+					ctx.moveTo(sx, sy);
+					ctx.lineTo(ex, ey);
+					ctx.stroke();
+
+					ctx.restore();
+				},
+
+				drawMoveLine: function(sx, sy, ex, ey, color, lineWidth) {
+					wctx.clearRect(0, 0, 300, 300);
+					wctx.beginPath();
+
+					wctx.strokeStyle = color;
+					wctx.lineWidth = lineWidth;
+					wctx.moveTo(sx, sy);
+					wctx.lineTo(ex, ey);
+					wctx.stroke();
+				},
+
+				drawErrorCircle: function(x, y, r, color, isFilled, lineWidth) {
+					wctx.save();
+					wctx.beginPath();
+					wctx.arc(x, y, r, 0, Math.PI * 2, true);
+					
+					if(isFilled) {
+						wctx.fillStyle = color;
+						wctx.fill();
+					} else {
+						wctx.strokeStyle = color;
+						wctx.lineWidth = lineWidth;
+						wctx.stroke();
+					}
+					wctx.restore();
+				},
+
+				drawErrorLine: function(sx, sy, ex, ey, color, lineWidth) {
+					wctx.beginPath();
+
+					wctx.strokeStyle = color;
+					wctx.lineWidth = lineWidth;
+					wctx.moveTo(sx, sy);
+					wctx.lineTo(ex, ey);
+					wctx.stroke();
+				},
+
+				isSelected: function(item) {
+					for(var i = 0, temp; i < this._select.length; i++) {
+						temp = this._select[i];
+						if(item.x == temp.x && item.y == temp.y) {
+							return true;
+						}
+					}
+
+					return false;
+				},
+
+				errorTrace: function() {
+					//#e74c3c
+					wctx.clearRect(0, 0, 300, 300);
+					var prev;
+					for(var i = 0, item; i < this._select.length; i++) {
+						item = this._select[i];
+						this.drawErrorCircle(item.x, item.y, item.r, '#e74c3c', false, 2);
+						this.drawErrorCircle(item.x, item.y, item.r / 4, '#e74c3c', true);
+
+						if(i > 0) {
+							this.drawErrorLine(prev.x, prev.y, item.x, item.y, '#e74c3c', 5);
+						}
+
+						prev = item;
+					}
+
+					var self = this;
+					setTimeout(function() {
+						wctx.clearRect(0, 0, 300, 300);
+						self.init();
+					},1000);
+				},
+
+				canvasMouseDown: function(e) {
+					var ox = e.offsetX, oy = e.offsetY, item;
+					for(var i = 0; i < this._data.length; i++) {
+						item = this._data[i];
+						if(((item.x - ox) * (item.x - ox) + (item.y - oy) * (item.y - oy)) <= item.r * item.r) {
+							this.drawCircle(item.x, item.y, item.r, '#43A047', false, 2);
+							this.drawCircle(item.x, item.y, parseInt(item.r / 4), '#43A047', true);
+
+							this._select.push(item);
+
+							this._isMove = true;
+
+							break;
+						}
+					}
+				},
+
+				canvasMouseMove: function(e) {
+					var item, temp;
+					var ox = e.offsetX, oy = e.offsetY;
+					if(this._isMove) {
+						if(this._select.length > 0) {
+							item = this._select[this._select.length-1];
+							this.drawMoveLine(item.x, item.y, ox, oy, '#43A047', 5);
+
+							for(var i = 0; i < this._data.length; i++) {
+								temp = this._data[i];
+								if(((temp.x - ox) * (temp.x - ox) + (temp.y - oy) * (temp.y - oy)) <= temp.r * temp.r) {
+									if(!this.isSelected(temp)) {
+										this.drawLine(item.x, item.y, temp.x, temp.y, '#43A047', 5);
+										this.drawCircle(temp.x, temp.y, temp.r, '#43A047', false, 2);
+										this.drawCircle(temp.x, temp.y, parseInt(temp.r / 4), '#43A047', true);
+
+										this._select.push(temp);
+
+										break;
+									}
+								}
+							}
+						}
+					}
+				},
+
+				canvasMouseUp: function(e) {
+					this._isMove = false;
+					wctx.clearRect(0, 0, 300, 300);
+					this.errorTrace();
+				}
+			};
+			window.onload = function() {
+				wcanvas = document.getElementById('wrap');
+				wcanvas.width = 300;
+				wcanvas.height = 300;
+				wctx = wcanvas.getContext('2d');
+
+				canvas = document.getElementById('canvas');
+				canvas.width = 300;
+				canvas.height = 300;
+				ctx = canvas.getContext('2d');
+				ctx.scale(1, 1);
+
+				api.init();
+
+				wcanvas.addEventListener('mousedown', api.canvasMouseDown.bind(api), false);
+
+				wcanvas.addEventListener('mousemove', api.canvasMouseMove.bind(api), false);
+
+				wcanvas.addEventListener('mouseup', api.canvasMouseUp.bind(api), false);
+			}
+		</script>
+	</body>
+</html>
